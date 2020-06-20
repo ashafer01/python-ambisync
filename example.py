@@ -67,6 +67,12 @@ class SomeClass(AmbisyncClass):
         def sub3(a, b):
             print(f'subroutine 3 ({self.myvar}) ({a}, {b})')
 
+            # The return of the final subroutine will be
+            # returned from the method.
+            # If any other subroutine returns a
+            # non-args, it will be ignored
+            return 'my_method done'
+
         # Arguments to _ambisync() define the subroutine
         # call sequence. They must be 1- or 2- tuples.
         # The first element must always be a synchronous
