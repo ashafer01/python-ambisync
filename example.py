@@ -6,16 +6,49 @@ from ambisync import ambisync, args, AmbisyncClass, SYNC, ASYNC
 
 
 class SomeClass(AmbisyncClass):
+    """This is a very simple example AmbisyncClass
+
+    For the example, the mode is explicitly passed in.
+    I anticipate most users will determine the mode from
+    some other parameter or config, and pass the desired
+    constant to the constructor.
+    """
     def __init__(self, myvar, mode):
+        """Example user constructor"""
+
+        # must explicitly call the AmbisyncClass constructor
         AmbisyncClass.__init__(self, mode)
+
+        # example normal constructor
         self.myvar = myvar
+
+    # The example ambisync method.
+    # Must be decorated with @ambisync
+    # Must return self._ambisync(...)
 
     @ambisync
     def my_method(self, myarg):
         """Test ambisync method"""
+
+        # The function body must be broken up
+        # into subroutines. They will only ever be
+        # called in one sequence with no branching.
+
+        # Return an args() to pass data into the
+        # next subroutine as arguments. 
+
         def sub1():
             print(f'subroutine 1 ({self.myvar})')
             return args(5)
+
+        # The second subroutine contains blocking
+        # calls or an await. Two functionally
+        # equivalent subroutines must be defined:
+        # One synchronous and wrapping the blocking
+        # call, and the other an async coroutine
+        # wrapping the await.
+        # Both must have the same argument signature
+        # and return type(s).
 
         def sync_sub2(a):
             print(f'sync subroutine 2 starting ({self.myvar}) ({myarg})')
@@ -29,8 +62,16 @@ class SomeClass(AmbisyncClass):
             print(f'async subroutine 2 finished ({self.myvar}) ({a})')
             return args(a+3, 'bar subarg')
 
+        # A final example subroutine. 
+
         def sub3(a, b):
             print(f'subroutine 3 ({self.myvar}) ({a}, {b})')
+
+        # Arguments to _ambisync() define the subroutine
+        # call sequence. They must be 1- or 2- tuples.
+        # The first element must always be a synchronous
+        # subroutine. The optional second element must
+        # be an async sub-coroutine if present. 
 
         return self._ambisync(
             (sub1,),
@@ -40,6 +81,7 @@ class SomeClass(AmbisyncClass):
 
 
 def main_synctest():
+    """Example using SomeClass.my_method in sync mode"""
     def foo():
         time.sleep(1.3)
         print('foo')
@@ -49,6 +91,7 @@ def main_synctest():
 
 
 def main_asynctest():
+    """Example using SomeClass.my_method in async mode"""
     async def testmain():
         async def foo():
             await asyncio.sleep(1.3)
@@ -61,6 +104,8 @@ def main_asynctest():
 
 
 class NoAmbiAsync(object):
+    """This is an async-only version of SomeClass"""
+
     def __init__(self, myvar):
         self.myvar = myvar
 
@@ -78,6 +123,8 @@ class NoAmbiAsync(object):
 
 
 def main_async_without_ambi():
+    """Equivalent example without ambisync"""
+
     async def testmain():
         async def foo():
             await asyncio.sleep(1.3)
