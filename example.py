@@ -34,8 +34,15 @@ class SomeClass(AmbisyncClass):
         # into subroutines. They will only ever be
         # called in one sequence with no branching.
 
+        # The first subroutine will not be passed any
+        # arguments, but all subroutines can access
+        # the method's namespace and arguments.
+
         # Return an args() to pass data into the
-        # next subroutine as arguments. 
+        # next subroutine as arguments. A return value
+        # of any other type will be ignored, except
+        # for the last subroutine in sequence,
+        # see below.
 
         def sub1():
             print(f'subroutine 1 ({self.myvar})')
