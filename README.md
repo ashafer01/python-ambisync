@@ -6,6 +6,8 @@ This is meant to be used by authors and maintainers of general-purpose library m
 
 Copying and modifying the module for your library/application is welcome. Please star the repo on GitHub if you use it!
 
+Available on PyPI: `pip install ambisync`
+
 At present, the following caveats exist:
 
 * The classes containing such methods must know whether they are operating syncronously or asynchronously.
