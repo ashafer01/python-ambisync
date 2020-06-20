@@ -97,12 +97,14 @@ class AmbisyncMethodCall(object):
         try:
             ret = None
             for subroutine_spec in self.plan_spec:
+                sync = True
                 try:
                     subroutine = subroutine_spec[1]
                     sync = False
                 except IndexError:
                     subroutine = subroutine_spec[0]
-                    sync = True
+                except TypeError:
+                    subroutine = subroutine_spec
                 if sync:
                     ret = _call_with_args(subroutine, ret)
                 else:
