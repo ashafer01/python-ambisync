@@ -87,7 +87,11 @@ class AmbisyncMethodCall(object):
         try:
             ret = None
             for subroutine_spec in self.plan_spec:
-                ret = _call_with_args(subroutine_spec[0], ret)
+                try:
+                    subroutine = subroutine_spec[0]
+                except TypeError:
+                    subroutine = subroutine_spec
+                ret = _call_with_args(subroutine, ret)
             return ret
         finally:
             self._called = True
