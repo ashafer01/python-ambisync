@@ -8,7 +8,7 @@ Please star the repo on `GitHub <https://github.com/ashafer01/python-ambisync>`_
 
 setup(
     name='ambisync',
-    version='0.1.0',
+    version='0.2.0',
     author='Alex Shafer',
     author_email='ashafer@pm.me',
     url='https://github.com/ashafer01/python-ambisync',

@@ -14,6 +14,5 @@ At present, the following caveats exist:
   * Ambisync _cannot_ determine at call time whether it should behave synchronously or asynchronously.
 * The method's body must be broken into subroutines if it's not already. For subroutines that need to `await`, both a synchronous local function and equivalent `async` local [sub-]coroutine must be defined.
 * The sequence in which to call these subroutines must be defined, and equivalent sync/async subroutines must be declared as such.
-* Methods must be decorated with supplied decorator.
 
 See comments in [example.py](example.py) for documentation.

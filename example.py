@@ -2,10 +2,10 @@ import asyncio
 import time
 from timeit import timeit
 
-from ambisync import ambisync, args, AmbisyncClass, SYNC, ASYNC
+from ambisync import ambisync
 
 
-class SomeClass(AmbisyncClass):
+class SomeClass(ambisync.BaseClass):
     """This is a very simple example AmbisyncClass
 
     For the example, the mode is explicitly passed in.
@@ -17,14 +17,14 @@ class SomeClass(AmbisyncClass):
         """Example user constructor"""
 
         # must explicitly call the AmbisyncClass constructor
-        AmbisyncClass.__init__(self, mode)
+        ambisync.BaseClass.__init__(self, mode)
 
         # example normal constructor
         self.myvar = myvar
 
     # The example ambisync method.
-    # Must be decorated with @ambisync
     # Must return self._ambisync(...)
+    # Decorator is optional but recommended for semantic clarity
 
     @ambisync
     def my_method(self, myarg):
@@ -46,7 +46,7 @@ class SomeClass(AmbisyncClass):
 
         def sub1():
             print(f'subroutine 1 ({self.myvar})')
-            return args(5)
+            return ambisync.args(5)
 
         # The second subroutine contains blocking
         # calls or an await. Two functionally
@@ -61,13 +61,13 @@ class SomeClass(AmbisyncClass):
             print(f'sync subroutine 2 starting ({self.myvar}) ({myarg})')
             time.sleep(3)
             print(f'sync subroutine 2 finished ({self.myvar}) ({a})')
-            return args(a+6, 'foo subarg')
+            return ambisync.args(a+6, 'foo subarg')
 
         async def async_sub2(a):
             print(f'async subroutine 2 starting ({self.myvar}) ({myarg})')
             await asyncio.sleep(3)
             print(f'async subroutine 2 finished ({self.myvar}) ({a})')
-            return args(a+3, 'bar subarg')
+            return ambisync.args(a+3, 'bar subarg')
 
         # A final example subroutine. 
 
@@ -99,7 +99,7 @@ def main_synctest():
         time.sleep(1.3)
         print('foo')
     foo()
-    sync_test = SomeClass('synctest', SYNC)
+    sync_test = SomeClass('synctest', ambisync.SYNC)
     sync_test.my_method('foosync')
 
 
@@ -110,7 +110,7 @@ def main_asynctest():
             await asyncio.sleep(1.3)
             print('foo')
         asyncio.create_task(foo())
-        sync_test_2 = SomeClass('asynctest2', ASYNC)
+        sync_test_2 = SomeClass('asynctest2', ambisync.ASYNC)
         await sync_test_2.my_method('test2 async')
 
     asyncio.run(testmain())

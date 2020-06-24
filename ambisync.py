@@ -20,15 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from functools import wraps
-from warnings import warn
 
-
-class AmbisyncAlreadyCalled(Exception):
-    pass
-
-
-class AmbisyncMethodNotCalledWarning(Warning):
+class AmbisyncError(Exception):
     pass
 
 
@@ -51,11 +44,14 @@ ASYNC = _Async()
 
 
 class args(object):
+    """Anonymous function arguments"""
+
     def __init__(self, *args, **kwds):
         self.args = args
         self.kwds = kwds
 
     def call_with(self, func):
+        """Call a function with our arguments"""
         return func(*self.args, **self.kwds)
 
 
@@ -66,81 +62,69 @@ def _call_with_args(func, args_obj):
         return func()
 
 
-class AmbisyncMethodCall(object):
-    def __init__(self, name, mode, plan_spec, warn_not_called):
-        self.name = name
-        self.mode = mode
-        self.plan_spec = plan_spec
-        self._called = False
-        self._warn_not_called_on_del = warn_not_called
-
-    def __del__(self):
-        if self._warn_not_called_on_del and not self._called:
-            warn(f'Ambisync method not called ({self.name})', AmbisyncMethodNotCalledWarning)
-
-    def _check_called(self):
-        if self._called:
-            raise AmbisyncAlreadyCalled()
-
-    def do_sync_call(self):
-        self._check_called()
+def _do_sync_call(plan_spec):
+    """Synchronously run a plan spec"""
+    ret = None
+    for subroutine_spec in plan_spec:
         try:
-            ret = None
-            for subroutine_spec in self.plan_spec:
-                try:
-                    subroutine = subroutine_spec[0]
-                except TypeError:
-                    subroutine = subroutine_spec
-                ret = _call_with_args(subroutine, ret)
-            return ret
-        finally:
-            self._called = True
+            subroutine = subroutine_spec[0]
+        except TypeError:
+            subroutine = subroutine_spec
+        ret = _call_with_args(subroutine, ret)
+    return ret
 
-    async def do_async_call(self):
-        self._check_called()
+
+async def _do_async_call(plan_spec):
+    """Asynchronously run a plan spec"""
+    ret = None
+    for subroutine_spec in plan_spec:
+        sync = True
         try:
-            ret = None
-            for subroutine_spec in self.plan_spec:
-                sync = True
-                try:
-                    subroutine = subroutine_spec[1]
-                    sync = False
-                except IndexError:
-                    subroutine = subroutine_spec[0]
-                except TypeError:
-                    subroutine = subroutine_spec
-                if sync:
-                    ret = _call_with_args(subroutine, ret)
-                else:
-                    ret = await _call_with_args(subroutine, ret)
-            return ret
-        finally:
-            self._called = True
-
-    def do_call(self):
-        if self.mode is SYNC:
-            return self.do_sync_call()
-        elif self.mode is ASYNC:
-            return self.do_async_call()
+            subroutine = subroutine_spec[1]
+            sync = False
+        except IndexError:
+            subroutine = subroutine_spec[0]
+        except TypeError:
+            subroutine = subroutine_spec
+        if sync:
+            ret = _call_with_args(subroutine, ret)
         else:
-            self._called = True
-            raise RuntimeError('Unknown mode')
+            ret = await _call_with_args(subroutine, ret)
+    return ret
 
 
-class AmbisyncClass(object):
+class AmbisyncBaseClass(object):
+    """Base class/mixin for classes containing Ambisync methods"""
+
     def __init__(self, mode):
+        if mode is not SYNC and mode is not ASYNC:
+            raise AmbisyncError('mode must be ambisync.SYNC or ambisync.ASYNC')
         self._ambisync_mode = mode
-        self._ambisync_warn_not_called_on_del = True
 
-    def _ambisync(self, *plan_spec, name=None):
-        return AmbisyncMethodCall(name,
-                                  self._ambisync_mode,
-                                  plan_spec,
-                                  self._ambisync_warn_not_called_on_del)
+    def _ambisync(self, *plan_spec):
+        if self._ambisync_mode is SYNC:
+            # run the plan before returning, and return the result
+            return _do_sync_call(plan_spec)
+        elif self._ambisync_mode is ASYNC:
+            # create the coroutine object for the caller to await
+            return _do_async_call(plan_spec)
+        else:
+            raise RuntimeError('Unknown _ambisync_mode')
 
 
-def ambisync(method):
-    @wraps(method)
-    def wrapper(self, *args, **kwds):
-        return method(self, *args, **kwds).do_call()
-    return wrapper
+class _Ambisync(object):
+    """For use with `from ambisync import ambisync` when combined with below definitions"""
+
+    # For ambisync.* to make sense
+    BaseClass = AmbisyncBaseClass
+    args = args
+    SYNC = SYNC
+    ASYNC = ASYNC
+
+    # optional @ambisync decorator for a semantic indicator at the top of a method definition
+    def __call__(self, method):
+        return method
+
+
+ambisync = _Ambisync()
+__all__ = ['ambisync']
