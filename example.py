@@ -16,7 +16,7 @@ class SomeClass(ambisync.BaseClass):
     def __init__(self, myvar, mode):
         """Example user constructor"""
 
-        # must explicitly call the AmbisyncClass constructor
+        # must explicitly call the ambisync.BaseClass constructor
         ambisync.BaseClass.__init__(self, mode)
 
         # example normal constructor
