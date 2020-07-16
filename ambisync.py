@@ -111,6 +111,33 @@ class AmbisyncBaseClass(object):
         else:
             raise RuntimeError('Unknown _ambisync_mode')
 
+    def _call_ambisync(self, method, *args, **kwds):
+        """Produce an ambisync plan entry that calls another ambisync method.
+
+        e.g.
+        ```
+        from ambisync import ambisync
+
+
+        class Example(ambisync.BaseClass):
+            @ambisync
+            def foo(self):
+                pass
+
+            @ambisync
+            def bar(self):
+                return self._ambisync(
+                    self._call_ambisync(self.foo),
+                )
+        ```
+        """
+        def ambisync_wrapper_sync_call():
+            return method(*args, **kwds)
+
+        async def ambisync_wrapper_async_call():
+            return await method(*args, **kwds)
+
+        return (ambisync_wrapper_sync_call, ambisync_wrapper_async_call)
 
 class _Ambisync(object):
     """For use with `from ambisync import ambisync` when combined with below definitions"""
