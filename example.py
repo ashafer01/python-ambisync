@@ -93,7 +93,7 @@ class SomeClass(ambisync.BaseClass):
         )
 
 
-def main_synctest():
+def test_sync():
     """Example using SomeClass.my_method in sync mode"""
     def foo():
         time.sleep(1.3)
@@ -103,7 +103,7 @@ def main_synctest():
     sync_test.my_method('foosync')
 
 
-def main_asynctest():
+def test_async():
     """Example using SomeClass.my_method in async mode"""
     async def testmain():
         async def foo():
@@ -135,7 +135,7 @@ class NoAmbiAsync(object):
         print(f'subroutine 3 ({self.myvar}) ({a}, {b})')
 
 
-def main_async_without_ambi():
+def test_async_without_ambi():
     """Equivalent example without ambisync"""
 
     async def testmain():
@@ -149,11 +149,66 @@ def main_async_without_ambi():
     asyncio.run(testmain())
 
 
+class AmbisyncInternalCalls(ambisync.BaseClass):
+    @ambisync
+    def test1(self):
+        def sync_sub1():
+            print('test1 sync sub1 start')
+            time.sleep(1.3)
+            print('test1 sync sub1 finish')
+
+        async def async_sub1():
+            print('test1 async sub1 start')
+            await asyncio.sleep(1.3)
+            print('test1 async sub1 finish')
+
+        return self._ambisync(
+            (sync_sub1, async_sub1),
+        )
+
+    @ambisync
+    def test2(self):
+        def sync_sub2():
+            print('test2 sync sub2 start')
+            time.sleep(1.3)
+            print('test2 sync sub2 finish')
+
+        async def async_sub2():
+            print('test2 async sub2 start')
+            await asyncio.sleep(1.3)
+            print('test2 async sub2 finish')
+
+        return self._ambisync(
+            self._call_ambisync(self.test1),
+            (sync_sub2, async_sub2),
+        )
+
+
+def test_sync_internal_calls():
+    o = AmbisyncInternalCalls(ambisync.SYNC)
+    o.test2()
+
+
+def test_async_internal_calls():
+    async def testmain():
+        async def foo():
+            await asyncio.sleep(0.7)
+            print('foo')
+
+        asyncio.create_task(foo())
+        o = AmbisyncInternalCalls(ambisync.ASYNC)
+        await o.test2()
+
+    asyncio.run(testmain())
+
+
 if __name__ == '__main__':
     tests = (
-        (main_synctest, 4.3),
-        (main_asynctest, 3),
-        (main_async_without_ambi, 3),
+        (test_sync, 4.3),
+        (test_async, 3),
+        (test_async_without_ambi, 3),
+        (test_sync_internal_calls, 2.6),
+        (test_async_internal_calls, 2.6),
     )
 
     n = 3

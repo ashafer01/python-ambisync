@@ -102,6 +102,54 @@ class AmbisyncBaseClass(object):
         self._ambisync_mode = mode
 
     def _ambisync(self, *plan_spec):
+        """Interpret the _ambisync_mode attribute and either do a sync run and
+        return the result, or return an awaitable coroutine object.
+
+        Accepts an arbitrary sequence ("plan") of 1- or 2-tuples ("plan
+        entries") where the first tuple element is a synchronous subroutine, and
+        the optional second tuple element is an async coroutine, functionally
+        equivalent except for sync/async calls.
+
+        Must be called and returned by an ambisync method.
+
+        e.g.
+        ```
+        from ambisync import ambisync
+        import asyncio, time
+
+
+        class Example(ambisync.BaseClass):
+            @ambisync
+            def sleep(self, seconds):
+                def sync_sleep():
+                    time.sleep(seconds)
+
+                async def async_sleep():
+                    await asyncio.sleep(seconds)
+
+                def done():
+                    print(f'Slept for {seconds} seconds')
+
+                return self._ambisync(
+                    (sync_sleep, async_sleep),
+                    (done,)
+                )
+
+
+        def run_sync():
+            example = Example(ambisync.SYNC)
+            example.sleep(2):
+
+
+        async def run_async():
+            example = Example(ambisync.ASYNC)
+            await example.sleep(2)
+
+
+        run_sync()
+        asyncio.run(run_async())
+        ```
+        """
         if self._ambisync_mode is SYNC:
             # run the plan before returning, and return the result
             return _do_sync_call(plan_spec)
@@ -111,7 +159,7 @@ class AmbisyncBaseClass(object):
         else:
             raise RuntimeError('Unknown _ambisync_mode')
 
-    def _call_ambisync(self, method, *args, **kwds):
+    def _call_ambisync(self, method):
         """Produce an ambisync plan entry that calls another ambisync method.
 
         e.g.
@@ -131,13 +179,8 @@ class AmbisyncBaseClass(object):
                 )
         ```
         """
-        def ambisync_wrapper_sync_call():
-            return method(*args, **kwds)
+        return (method, method)
 
-        async def ambisync_wrapper_async_call():
-            return await method(*args, **kwds)
-
-        return (ambisync_wrapper_sync_call, ambisync_wrapper_async_call)
 
 class _Ambisync(object):
     """For use with `from ambisync import ambisync` when combined with below definitions"""
