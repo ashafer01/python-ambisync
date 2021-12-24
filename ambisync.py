@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import re
+
 
 class AmbisyncError(Exception):
     pass
@@ -93,7 +95,47 @@ async def _do_async_call(plan_spec):
     return ret
 
 
-class AmbisyncBaseClass(object):
+class _AutoPlanSpecItem:
+    def __init__(self, seq_num):
+        self._seq_num = seq_num
+        self.sync = None
+        self.async = None
+
+    def to_tuple(self):
+        if not self.sync:
+            raise AmbisyncError(f'no sync method found '
+                                f'for subroutine {self._seq_num}')
+        item = [self.sync]
+        if self.async:
+            item.append(self.async)
+        return tuple(item)
+
+
+_auto_plan_spec_re = re.compile(r'^sub_?([0-9]+)(_sync|_async)?')
+
+
+def _auto_plan(locals_dict):
+    auto_plan_spec = {}
+    for key, val in locals_dict.items():
+        match = _auto_plan_spec_re.match(key)
+        if match:
+            seq_num = int(match.group(1))
+            mode = match.group(2)
+            plan_item = auto_plan_spec.setdefault(seq_num, _AutoPlanSpecItem(seq_num))
+            if not mode or mode == '_sync':
+                plan_item.sync = val
+            elif mode == '_async':
+                plan_item.async = val
+            else:
+                raise RuntimeError(f'regex matched unexpected value {mode!r}')
+    plan_spec = []
+    for key in sorted(auto_plan_spec.keys()):
+        plan_item = auto_plan_spec[key].to_tuple()
+        plan_spec.append(plan_item)
+    return plan_spec
+
+
+class AmbisyncBaseClass:
     """Base class/mixin for classes containing Ambisync methods"""
 
     def __init__(self, mode):
@@ -150,6 +192,10 @@ class AmbisyncBaseClass(object):
         asyncio.run(run_async())
         ```
         """
+        if isinstance(plan_spec[0], dict):
+            if len(plan_spec) > 1:
+                raise Exception('only one argument may be passed if a locals dict is passed')
+            plan_spec = _auto_plan(plan_spec[0])
         if self._ambisync_mode is SYNC:
             # run the plan before returning, and return the result
             return _do_sync_call(plan_spec)
